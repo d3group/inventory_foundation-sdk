@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "inventory_foundation-sdk"
+  site-url: "https://d3group.github.io/inventory_foundation-sdk"
+  description: "Central repo with all re-usable code related to the inventory foundation model project"
+  repo-branch: main
+  repo-url: "https://github.com/d3group/inventory_foundation-sdk"
