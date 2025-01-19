@@ -18,7 +18,7 @@ import shutil
 
 import logging
 
-from db_mgmt import get_db_credentials
+from .db_mgmt import get_db_credentials
 
 # %% ../nbs/00_core copy.ipynb 4
 logger = logging.getLogger(__name__)
