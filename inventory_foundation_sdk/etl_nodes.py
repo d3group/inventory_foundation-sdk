@@ -22,10 +22,11 @@ def input_output_node(*inputs):
 
 # %% ../nbs/30_ETL_nodes.ipynb 7
 def convert_hirarchic_to_dict(categories: pd.DataFrame, single_leaf_level=True) -> dict:
+    
     """
     
     This function converts a strictly hirarchic dataframe into a dictioary. Strictly hirarchic means
-    that 
+    that each column represents a hirarchy level, and each subcategory belongs to exactly one higher level category.
     In the dataframe, each subcategory belongs to exactly one higher level category.
 
     The dictionary is the general form that is used by the write_db_node as input.
@@ -47,8 +48,6 @@ def convert_hirarchic_to_dict(categories: pd.DataFrame, single_leaf_level=True) 
     - category_level_names: A list of the column names of the categories dataframe.
 
     """
-
-    print("categories df:" , categories)
 
     if single_leaf_level:
 
