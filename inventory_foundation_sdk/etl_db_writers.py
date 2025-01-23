@@ -20,7 +20,6 @@ import os
 import csv
 import shutil
 
-
 from .db_mgmt import get_db_credentials, insert_multi_rows
 
 # %% ../nbs/30_ETL_db_writers.ipynb 5
