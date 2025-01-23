@@ -43,13 +43,14 @@ class AddRowDataset(AbstractDataset):
         load_args = None,
         save_args = None
     ):
+
         self.unique_columns = unique_columns
         self.table = table
         self.column_names = column_names
         self.db_credentials = credentials
         self.save_args = save_args or {}
         self.load_args = load_args or {}
-
+    
     def _describe(self) -> t.Dict[str, t.Any]:
         """Returns a dict that describes the attributes of the dataset."""
         return dict(
