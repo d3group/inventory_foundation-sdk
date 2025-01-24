@@ -107,7 +107,7 @@ def write_company_name(name: str, additional_info: t.Dict = None, ignore_company
                     
                     # Insert additional information for new entry
                     if additional_info is not None:
-                        for key, value in additional_info.to_dict().items():
+                        for key, value in additional_info.items():
                             # Add column if it doesn't exist
                             cur.execute(
                                 f"""
