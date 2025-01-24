@@ -14,10 +14,8 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 
-
 # %% ../nbs/10_db_mgmt.ipynb 5
 def get_db_credentials():
-    
     """
     Fetch PostgreSQL database credentials from the configuration file of the kedro project.
 
@@ -35,7 +33,9 @@ def get_db_credentials():
 
 # %% ../nbs/10_db_mgmt.ipynb 6
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def insert_multi_rows(
     data_to_insert: pd.DataFrame,
@@ -47,7 +47,6 @@ def insert_multi_rows(
     return_with_ids: bool = False,
     unique_columns: list = None,  # mandatory if return_with_ids is True
 ) -> pd.DataFrame | None:
-    
     """
     Inserts data into the specified database table, with an optional return of database-assigned IDs.
 
@@ -68,31 +67,40 @@ def insert_multi_rows(
     # Check for NaN values and log a warning if any are found
     if data_to_insert.isnull().values.any():
         logger.warning("There are NaNs in the data")
-    
+
     # Ensure the DataFrame has the correct number of columns
     if len(column_names) != data_to_insert.shape[1]:
-        raise ValueError("Number of column names does not match the number of columns in the DataFrame.")
+        raise ValueError(
+            "Number of column names does not match the number of columns in the DataFrame."
+        )
     if len(types) != data_to_insert.shape[1]:
-        raise ValueError("Number of types does not match the number of columns in the DataFrame.")
-    
+        raise ValueError(
+            "Number of types does not match the number of columns in the DataFrame."
+        )
+
     logger.info("-- in insert multi rows -- converting data to list of tuples")
     # Convert to list of tuples and apply type casting
 
     data_values = data_to_insert.values.tolist()
-    data_values = [tuple(typ(val) for typ, val in zip(types, row)) for row in data_values]
-    
+    data_values = [
+        tuple(typ(val) for typ, val in zip(types, row)) for row in data_values
+    ]
+
     logger.info("-- in insert multi rows -- preparing SQL")
     # Create SQL placeholders and query
     placeholders = ", ".join(["%s"] * len(column_names))
     column_names_str = ", ".join(f'"{col}"' for col in column_names)
-    
 
-    batch_size_for_commit = 1_000_000  # Adjust this based on your dataset size and transaction tolerance
+    batch_size_for_commit = (
+        1_000_000  # Adjust this based on your dataset size and transaction tolerance
+    )
     row_count = 0
 
     if return_with_ids:
         if not unique_columns:
-            raise ValueError("unique_columns must be provided when return_with_ids is True")
+            raise ValueError(
+                "unique_columns must be provided when return_with_ids is True"
+            )
 
         unique_columns_str = ", ".join(f'"{col}"' for col in unique_columns)
         insert_query = f"""
@@ -104,8 +112,6 @@ def insert_multi_rows(
         """
         ids = []
 
-        
-        
         # Insert row by row and collect IDs
         with tqdm(total=len(data_values), desc="Inserting rows") as pbar:
             for row in data_values:
@@ -115,12 +121,12 @@ def insert_multi_rows(
                     ids.append(row_id[0])
                 row_count += 1
                 pbar.update(1)  # Update progress bar for each row
-                
+
                 # Commit every batch_size_for_commit rows
                 if row_count % batch_size_for_commit == 0:
                     conn.commit()  # Commit the transaction
-        conn.commit() 
-        
+        conn.commit()
+
         # Add IDs back to the original DataFrame
         data_with_ids = data_to_insert.copy()
         data_with_ids["ID"] = ids
@@ -132,7 +138,7 @@ def insert_multi_rows(
             VALUES ({placeholders})
             ON CONFLICT DO NOTHING;
         """
-        
+
         # Insert row by row without returning IDs
         with tqdm(total=len(data_values), desc="Inserting rows") as pbar:
             for row in data_values:
@@ -141,7 +147,7 @@ def insert_multi_rows(
                 pbar.update(1)  # Update progress bar for each row
                 if row_count % batch_size_for_commit == 0:
                     conn.commit()  # Commit the transaction
-                
+
         conn.commit()  # Commit all changes after processing
 
     return None
