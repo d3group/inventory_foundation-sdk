@@ -171,7 +171,9 @@ def check_in_scope_entries(
         further_primary_keys (list): Additional primary key columns in the target table.
         further_primary_keys_values (list): Corresponding values for further_primary_keys.
     """
-    if not further_primary_keys or not further_primary_keys_values:
+
+    # Check if one is provided without the other
+    if (further_primary_keys is None) != (further_primary_keys_values is None):
         raise ValueError("Both further_primary_keys and further_primary_keys_values must be provided together.")
 
     try:
@@ -185,42 +187,61 @@ def check_in_scope_entries(
                 """, (dataset_id,))
                 all_sku_ids = {row[0] for row in cur.fetchall()}
 
-                # Step 2: Get `skuIDs` from the target table matching further_primary_keys_values
-                additional_conditions = " AND ".join(
-                    f'"{key}" = %s' for key in further_primary_keys
-                )
-                additional_values = further_primary_keys_values
+                # Step 2: Build query for `skuIDs` in the target table
+                where_clause = f'"{dataset_column}" = %s'
+                query_params = [dataset_id]
+
+                if further_primary_keys:
+                    additional_conditions = " AND ".join(
+                        f'"{key}" = %s' for key in further_primary_keys
+                    )
+                    where_clause += f" AND {additional_conditions}"
+                    query_params.extend(further_primary_keys_values)
 
                 cur.execute(f"""
                     SELECT DISTINCT "{id_column}"
                     FROM {target_table}
-                    WHERE "{dataset_column}" = %s
-                    AND {additional_conditions};
-                """, (dataset_id, *additional_values))
+                    WHERE {where_clause};
+                """, query_params)
                 existing_sku_ids = {row[0] for row in cur.fetchall()}
 
                 # Step 3: Identify missing `skuIDs`
                 missing_sku_ids = all_sku_ids - existing_sku_ids
 
-                # Step 4: Insert missing rows
                 if missing_sku_ids:
                     logger.info(f"Adding missing IDs for {target_table}: {missing_sku_ids}")
 
                     # Build column list and placeholders
-                    columns = [id_column, dataset_column] + insert_arguments + further_primary_keys
+                    columns = [id_column, dataset_column] + insert_arguments
+                    value_placeholders = ["%s", "%s"] + ["0"] * len(insert_arguments)
+
+                    if further_primary_keys:
+                        columns += further_primary_keys
+                        value_placeholders += ["%s"] * len(further_primary_keys)
+
                     column_list = ", ".join(f'"{col}"' for col in columns)
-                    value_placeholders = ["%s", "%s"] + ["0"] * len(insert_arguments) + ["%s"] * len(further_primary_keys)
+                    placeholder_list = ", ".join(value_placeholders)
 
                     for sku_id in missing_sku_ids:
-                        args = (sku_id, dataset_id, *further_primary_keys_values)
+                        # Build arguments dynamically
+                        args = [sku_id, dataset_id]
+                        if further_primary_keys_values:
+                            args += further_primary_keys_values
+
                         query = f"""
                             INSERT INTO {target_table} ({column_list})
-                            VALUES ({", ".join(value_placeholders)})
-                            ON CONFLICT ({", ".join(f'"{col}"' for col in [id_column, dataset_column] + further_primary_keys)})
+                            VALUES ({placeholder_list})
+                            ON CONFLICT ({", ".join(f'"{col}"' for col in [id_column, dataset_column] + (further_primary_keys or []))})
                             DO NOTHING;
                         """
+
+                        # Debugging information
+                        # print(f"Executing query: {query}")
+                        # print(f"With arguments: {args}")
+
+                        # Execute the query
                         cur.execute(query, args)
-                    
+
                     conn.commit()
                     logger.info(f"Missing IDs handled successfully for {target_table}.")
                 else:
@@ -229,5 +250,4 @@ def check_in_scope_entries(
     except Exception as e:
         logger.error(f"Error checking in-scope entries for {target_table}: {e}")
         raise e
-
 
