@@ -1,0 +1,6 @@
+kedro~=0.19.9
+psycopg2-binary~=2.9.1
+pandas>=1.5.0
+numpy>=1.21.0
+tqdm~=4.67.1
+black~=24.10.0

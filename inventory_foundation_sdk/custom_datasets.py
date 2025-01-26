@@ -25,13 +25,14 @@ import json
 
 # %% ../nbs/50_custom_datasets.ipynb 5
 import logging
+
 logger = logging.getLogger(__name__)
 
+
 class AddRowDataset(AbstractDataset):
-    
     """
     Adds or update one row to a SQL table, if it does not exist.
-    
+
     """
 
     def __init__(
@@ -40,8 +41,8 @@ class AddRowDataset(AbstractDataset):
         column_names: t.List,
         credentials: str,
         unique_columns: t.List,
-        load_args = None,
-        save_args = None
+        load_args=None,
+        save_args=None,
     ):
 
         self.unique_columns = unique_columns
@@ -50,7 +51,7 @@ class AddRowDataset(AbstractDataset):
         self.db_credentials = credentials
         self.save_args = save_args or {}
         self.load_args = load_args or {}
-    
+
     def _describe(self) -> t.Dict[str, t.Any]:
         """Returns a dict that describes the attributes of the dataset."""
         return dict(
@@ -66,15 +67,13 @@ class AddRowDataset(AbstractDataset):
         return_all_columns = self.load_args.get("return_all_columns", False)
 
         try:
-            with psycopg2.connect(self.db_credentials['con']) as conn:
+            with psycopg2.connect(self.db_credentials["con"]) as conn:
                 with conn.cursor() as cursor:
-                    
+
                     if return_all_columns:
 
                         # Fetch all rows
-                        cursor.execute(
-                            f"SELECT * FROM {self.table}"
-                        )
+                        cursor.execute(f"SELECT * FROM {self.table}")
                         data = cursor.fetchall()
 
                         # Fetch column names in the correct order from the database
@@ -87,7 +86,7 @@ class AddRowDataset(AbstractDataset):
                             WHERE c.relname = %s AND a.attnum > 0 AND NOT a.attisdropped
                             ORDER BY a.attnum
                             """,
-                            (self.table,)
+                            (self.table,),
                         )
                         columns = [row[0] for row in cursor.fetchall()]
 
@@ -116,22 +115,28 @@ class AddRowDataset(AbstractDataset):
         """
 
         verbose = self.save_args.get("verbose", 1)
-        
+
         try:
             # Connect to the database
-            with psycopg2.connect(self.db_credentials['con']) as conn:
+            with psycopg2.connect(self.db_credentials["con"]) as conn:
                 with conn.cursor() as cursor:
                     # Prepare data insertion
                     for _, row in data.iterrows():
                         # Ensure all data is properly converted to standard Python types
                         row_data = tuple(
-                            row[col].item() if isinstance(row[col], (np.generic, np.ndarray)) else row[col]
+                            (
+                                row[col].item()
+                                if isinstance(row[col], (np.generic, np.ndarray))
+                                else row[col]
+                            )
                             for col in self.column_names
                         )
 
                         # Determine the update clause (exclude unique columns)
                         updatable_columns = [
-                            col for col in self.column_names if col not in self.unique_columns
+                            col
+                            for col in self.column_names
+                            if col not in self.unique_columns
                         ]
 
                         # Only create an update clause if there are columns to update
@@ -149,30 +154,42 @@ class AddRowDataset(AbstractDataset):
                             )
 
                             # Build the SQL query dynamically
-                            query = sql.SQL("""
+                            query = sql.SQL(
+                                """
                                 INSERT INTO {table} ({columns})
                                 VALUES ({values})
                                 ON CONFLICT ({conflict_clause}) DO UPDATE SET
                                     {update_clause}
                                 RETURNING xmax = 0 AS is_inserted
-                            """).format(
+                            """
+                            ).format(
                                 table=sql.Identifier(self.table),
-                                columns=sql.SQL(", ").join(sql.Identifier(col) for col in self.column_names),
-                                values=sql.SQL(", ").join(sql.Placeholder() for _ in self.column_names),
+                                columns=sql.SQL(", ").join(
+                                    sql.Identifier(col) for col in self.column_names
+                                ),
+                                values=sql.SQL(", ").join(
+                                    sql.Placeholder() for _ in self.column_names
+                                ),
                                 conflict_clause=conflict_clause,
-                                update_clause=update_clause
+                                update_clause=update_clause,
                             )
                         else:
                             # Build the SQL query for insertion without an update clause
-                            query = sql.SQL("""
+                            query = sql.SQL(
+                                """
                                 INSERT INTO {table} ({columns})
                                 VALUES ({values})
                                 ON CONFLICT DO NOTHING
                                 RETURNING xmax = 0 AS is_inserted
-                            """).format(
+                            """
+                            ).format(
                                 table=sql.Identifier(self.table),
-                                columns=sql.SQL(", ").join(sql.Identifier(col) for col in self.column_names),
-                                values=sql.SQL(", ").join(sql.Placeholder() for _ in self.column_names)
+                                columns=sql.SQL(", ").join(
+                                    sql.Identifier(col) for col in self.column_names
+                                ),
+                                values=sql.SQL(", ").join(
+                                    sql.Placeholder() for _ in self.column_names
+                                ),
                             )
 
                         # Execute the query with properly cast values
@@ -183,9 +200,13 @@ class AddRowDataset(AbstractDataset):
 
                         if verbose > 0:
                             if is_inserted:
-                                logger.info(f"Inserted new row: {dict(zip(self.column_names, row_data))}")
+                                logger.info(
+                                    f"Inserted new row: {dict(zip(self.column_names, row_data))}"
+                                )
                             else:
-                                logger.info(f"Updated row (or skipped due to conflict): {dict(zip(self.column_names, row_data))}")
+                                logger.info(
+                                    f"Updated row (or skipped due to conflict): {dict(zip(self.column_names, row_data))}"
+                                )
 
                     # Commit the transaction
                     conn.commit()
@@ -196,16 +217,14 @@ class AddRowDataset(AbstractDataset):
 
 # %% ../nbs/50_custom_datasets.ipynb 6
 class DynamicPathJSONDataset(AbstractDataset):
-    
     """
     Custom dataset to dynamically resolve a JSON file path from parameters.
     """
 
     def __init__(self, path_param: str):
-        
         """
         Initializes the ConditionedJSONDataset.
-        
+
         Args:
             path_param (str): The parameter key that contains the file path.
         """
@@ -220,10 +239,12 @@ class DynamicPathJSONDataset(AbstractDataset):
         """
         # Load parameters
         params_path = self.config_loader["parameters"][self.path_param]
-    
+
         # Resolve the file path from parameters
         if not params_path:
-            raise ValueError(f"Path parameter '{self.path_param}' not found in parameters.")
+            raise ValueError(
+                f"Path parameter '{self.path_param}' not found in parameters."
+            )
 
         # Load and return JSON data
         full_path = Path(params_path)
