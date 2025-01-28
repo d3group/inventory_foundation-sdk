@@ -1,0 +1,1 @@
+Sitemap: https://d3group.github.io/inventory_foundation-sdk/sitemap.xml

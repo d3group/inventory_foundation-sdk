@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://d3group.github.io/inventory_foundation-sdk/kedro_orchestration.html</loc>
+    <lastmod>2025-01-28T10:35:13.215Z</lastmod>
+  </url>
+  <url>
+    <loc>https://d3group.github.io/inventory_foundation-sdk/index.html</loc>
+    <lastmod>2025-01-28T10:35:12.710Z</lastmod>
+  </url>
+  <url>
+    <loc>https://d3group.github.io/inventory_foundation-sdk/etl_nodes.html</loc>
+    <lastmod>2025-01-28T10:35:13.141Z</lastmod>
+  </url>
+  <url>
+    <loc>https://d3group.github.io/inventory_foundation-sdk/etl_db_writers.html</loc>
+    <lastmod>2025-01-28T10:35:13.556Z</lastmod>
+  </url>
+  <url>
+    <loc>https://d3group.github.io/inventory_foundation-sdk/db_mgmt.html</loc>
+    <lastmod>2025-01-28T10:35:13.461Z</lastmod>
+  </url>
+  <url>
+    <loc>https://d3group.github.io/inventory_foundation-sdk/custom_datasets.html</loc>
+    <lastmod>2025-01-28T10:35:13.496Z</lastmod>
+  </url>
+</urlset>
