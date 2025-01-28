@@ -18,17 +18,15 @@ import typing as t
 
 import psycopg2
 
-
 # %% ../nbs/11_db_retrievers.ipynb 5
 def get_company_id(company_name: str, credentials_con: str):
-    
     """
     Function to get the company_id from the company_name
 
     Args:
         company_name (str): The company name
         credentials_con (str): The credentials connection string
-    
+
     """
 
     try:
@@ -53,20 +51,17 @@ def get_company_id(company_name: str, credentials_con: str):
         print(e)
         raise e
 
-    
-
 # %% ../nbs/11_db_retrievers.ipynb 6
 def get_date_id(date: str, credentials_con: str):
-    
     """
     Function to get the date_id from a date
 
     Args:
         date (str): A date
         credentials_con (str): The credentials connection string
-    
+
     """
-    
+
     try:
         with psycopg2.connect(credentials_con) as conn:
             with conn.cursor() as cur:
@@ -85,7 +80,7 @@ def get_date_id(date: str, credentials_con: str):
                     raise ValueError("Multiple dates found")
                 company_id = cur.fetchone()[0]
         return company_id
-    
+
     except Exception as e:
         print(e)
         raise e
@@ -151,12 +146,19 @@ def get_norm_param(
 
         # Check if the result is empty
         if not result:
-            raise ValueError("No matching normalization parameters found in the database.")
+            raise ValueError(
+                "No matching normalization parameters found in the database."
+            )
 
         # Map the result to a dictionary
         if additional_columns:
             return {
-                row[0]: dict(zip(value_columns[len(additional_columns):], row[len(additional_columns):]))
+                row[0]: dict(
+                    zip(
+                        value_columns[len(additional_columns) :],
+                        row[len(additional_columns) :],
+                    )
+                )
                 for row in result
             }
         else:
@@ -166,7 +168,6 @@ def get_norm_param(
         raise RuntimeError(f"Database error occurred: {e}") from e
     except Exception as e:
         raise RuntimeError(f"An error occurred: {e}") from e
-
 
 # %% ../nbs/11_db_retrievers.ipynb 8
 def get_norm_param_by_company(
@@ -200,7 +201,9 @@ def get_norm_param_by_company(
     try:
         # Ensure "skuID" is included in additional columns
         if additional_columns is None or "skuID" not in additional_columns:
-            raise ValueError('"skuID" must be included in additional_columns for company filtering.')
+            raise ValueError(
+                '"skuID" must be included in additional_columns for company filtering.'
+            )
 
         # Determine the columns to fetch based on normalization type
         if normalization_type == "standardize":
@@ -243,11 +246,18 @@ def get_norm_param_by_company(
 
         # Check if the result is empty
         if not result:
-            raise ValueError("No matching normalization parameters found in the database.")
+            raise ValueError(
+                "No matching normalization parameters found in the database."
+            )
 
         # Map the result to a dictionary
         return {
-            row[0]: dict(zip(value_columns[len(additional_columns):], row[len(additional_columns):]))
+            row[0]: dict(
+                zip(
+                    value_columns[len(additional_columns) :],
+                    row[len(additional_columns) :],
+                )
+            )
             for row in result
         }
 
@@ -255,4 +265,3 @@ def get_norm_param_by_company(
         raise RuntimeError(f"Database error occurred: {e}") from e
     except Exception as e:
         raise RuntimeError(f"An error occurred: {e}") from e
-
