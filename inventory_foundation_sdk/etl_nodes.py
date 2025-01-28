@@ -12,19 +12,17 @@ from collections import defaultdict
 
 # %% ../nbs/31_ETL_nodes.ipynb 5
 def input_output_node(*inputs):
-    
     """
     This is a node for cases where the raw data can be directly passed through without processing steps.
-    
+
     Accepts multiple inputs and returns them unpacked. If there's only one input, it returns the input itself.
     """
     return inputs[0] if len(inputs) == 1 else inputs
 
 # %% ../nbs/31_ETL_nodes.ipynb 7
 def convert_hirarchic_to_dict(categories: pd.DataFrame, single_leaf_level=True) -> dict:
-    
     """
-    
+
     This function converts a strictly hirarchic dataframe into a dictioary. Strictly hirarchic means
     that each column represents a hirarchy level, and each subcategory belongs to exactly one higher level category.
     In the dataframe, each subcategory belongs to exactly one higher level category.
@@ -34,7 +32,7 @@ def convert_hirarchic_to_dict(categories: pd.DataFrame, single_leaf_level=True) 
     Requirements:
     - IMPORTANT: This function is only for strictly hierarchical categories, i.e., each subcategory belongs to exactly one higher level category.
     - The categories must be in descending order (i.e., the first columns the highest level category, second column is the second highest level category, etc.)
-    - The column names can carry a name, if required (e.g., "category", "department", etc.). 
+    - The column names can carry a name, if required (e.g., "category", "department", etc.).
     - The categories itself will be saved under generic levles ("1", "2", etc.), but the specific names will be returned in separate list for saving
 
     Inputs:
@@ -42,7 +40,7 @@ def convert_hirarchic_to_dict(categories: pd.DataFrame, single_leaf_level=True) 
     - single_leaf_level: A boolean that indicates if the categories dataframe has only one leaf level. If True, the function will return a dictionary with the leaf level as the last level. If False, leafs may be at different levels.
 
     Outputs:
-    - mappings: A dictionary with the levels as keys and a dictionary as values. 
+    - mappings: A dictionary with the levels as keys and a dictionary as values.
                 The dictionary has the category names as keys and list of parents.
                 This means that the dictionary is more general than the dataframe and is the required input for the write_db_node.
     - category_level_names: A list of the column names of the categories dataframe.
@@ -62,25 +60,31 @@ def convert_hirarchic_to_dict(categories: pd.DataFrame, single_leaf_level=True) 
                 level_cats = categories[category_level_names[i]].astype(str).unique()
                 level_cats = {cat: None for cat in level_cats}
             else:
-                data = categories.iloc[:, i-1:i+1]
+                data = categories.iloc[:, i - 1 : i + 1]
                 data = data.drop_duplicates()
                 # Create a defaultdict with lists as the default value type
                 level_cats = defaultdict(list)
 
                 # Populate the dictionary using column index positions
-                for key, value in zip(data.iloc[:, 1], data.iloc[:, 0]):  # 1 for the second column, 0 for the first column
+                for key, value in zip(
+                    data.iloc[:, 1], data.iloc[:, 0]
+                ):  # 1 for the second column, 0 for the first column
                     if key not in level_cats:
-                        level_cats[key] = [] # Initialize with an empty list and the leaf value
-                    level_cats[key].append(value)  # Append the value to the list of parents
+                        level_cats[key] = (
+                            []
+                        )  # Initialize with an empty list and the leaf value
+                    level_cats[key].append(
+                        value
+                    )  # Append the value to the list of parents
 
                 # Convert to a regular dict if needed
                 level_cats = dict(level_cats)
 
-            mappings[i+1] = level_cats
+            mappings[i + 1] = level_cats
 
     else:
         raise NotImplementedError("Currently only single leaf level is supported.")
-    
+
     category_level_names = categories.columns.to_list()
-    
+
     return mappings, category_level_names
