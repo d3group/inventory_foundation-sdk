@@ -24,18 +24,21 @@ from .db_mgmt import get_db_credentials, insert_multi_rows
 
 # %% ../nbs/30_ETL_db_writers.ipynb 5
 import logging
+
 logger = logging.getLogger(__name__)
 
-def write_company_name(name: str, additional_info: t.Dict = None, ignore_company_if_exist: bool = True) -> int:
-     
+
+def write_company_name(
+    name: str, additional_info: t.Dict = None, ignore_company_if_exist: bool = True
+) -> int:
     """
     This function writes the company name to the database and any additional info.
     Each key in `additional_info` becomes a column in the database table if it doesn't exist,
     and the associated value is written to that column.
-    
+
     If `ignore_company_if_exist` is False and the company name already exists, an error is raised.
     If `ignore_company_if_exist` is True, a warning is logged and the existing record is updated if additional info differs.
-    
+
     Returns the ID that the database has assigned to the company name.
     """
 
@@ -52,23 +55,23 @@ def write_company_name(name: str, additional_info: t.Dict = None, ignore_company
                     ON CONFLICT (name) DO NOTHING
                     RETURNING "ID";
                     """,
-                    (name,)
+                    (name,),
                 )
                 result = cur.fetchone()
-                
+
                 if result is None:
                     # Company exists, handle based on ignore_company_if_exist flag
                     cur.execute(
                         """
                         SELECT "ID" FROM companies WHERE name = %s;
                         """,
-                        (name,)
+                        (name,),
                     )
                     company_id = cur.fetchone()[0]
-                    
+
                     if not ignore_company_if_exist:
                         raise ValueError(f"Company '{name}' already exists.")
-                    
+
                     logger.warning("Company already exists, ignoring new entry")
 
                     # Check if additional info needs to be updated
@@ -81,33 +84,35 @@ def write_company_name(name: str, additional_info: t.Dict = None, ignore_company
                                 ADD COLUMN IF NOT EXISTS {key} TEXT;
                                 """
                             )
-                            
+
                             # Check current value before updating
                             cur.execute(
                                 f"""
                                 SELECT {key} FROM companies WHERE "ID" = %s;
                                 """,
-                                (company_id,)
+                                (company_id,),
                             )
                             current_value = cur.fetchone()[0]
-                            
+
                             # Only update if the value is different
                             if current_value != value:
-                                logger.warning(f"Overwriting '{key}' for company '{name}' from '{current_value}' to '{value}'.")
+                                logger.warning(
+                                    f"Overwriting '{key}' for company '{name}' from '{current_value}' to '{value}'."
+                                )
                                 cur.execute(
                                     f"""
                                     UPDATE companies
                                     SET {key} = %s
                                     WHERE "ID" = %s;
                                     """,
-                                    (value, company_id)
+                                    (value, company_id),
                                 )
                 else:
                     company_id = result[0]
-                    
+
                     # Insert additional information for new entry
                     if additional_info is not None:
-                        for key, value in additional_info.to_dict().items():
+                        for key, value in additional_info.items():
                             # Add column if it doesn't exist
                             cur.execute(
                                 f"""
@@ -122,9 +127,9 @@ def write_company_name(name: str, additional_info: t.Dict = None, ignore_company
                                 SET {key} = %s
                                 WHERE "ID" = %s;
                                 """,
-                                (value, company_id)
+                                (value, company_id),
                             )
-                    
+
     except Exception as e:
         logger.error(f"Got error while writing company name to database: {e}")
         raise e
@@ -132,8 +137,9 @@ def write_company_name(name: str, additional_info: t.Dict = None, ignore_company
     return company_id
 
 # %% ../nbs/30_ETL_db_writers.ipynb 7
-def write_categories(categories: dict, company_id: int, category_level_names: list = None) -> t.List[int]:
-    
+def write_categories(
+    categories: dict, company_id: int, category_level_names: list = None
+) -> t.List[int]:
     """
     This function writes the categories to the database.
 
@@ -162,11 +168,9 @@ def write_categories(categories: dict, company_id: int, category_level_names: li
         write_category_level(level, company_id)
 
     return True
-   
 
 # %% ../nbs/30_ETL_db_writers.ipynb 9
 def write_category_level_descriptions(category_level_names, company_id):
-        
     """
     This function writes the names of the category levels to the database.
     """
@@ -184,14 +188,14 @@ def write_category_level_descriptions(category_level_names, company_id):
                         ON CONFLICT ("companyID", level) 
                         DO UPDATE SET name = EXCLUDED.name;
                         """,
-                        (company_id, i+1, name)
+                        (company_id, i + 1, name),
                     )
     except Exception as e:
         logger.error(f"Got error while writing category level names to database: {e}")
         raise e
 
+
 def write_category_level(categories: list, company_id: int) -> t.Dict[str, int]:
-    
     """
     This function writes one level of categories into the database and returns a list of the IDs that the database has assigned.
     The purpose is to call this function repeatedly for each level of categories.
@@ -223,19 +227,19 @@ def write_category_level(categories: list, company_id: int) -> t.Dict[str, int]:
                         WHERE "companyID" = %s AND name = %s
                         LIMIT 1;
                         """,
-                        (company_id, key, company_id, key)
+                        (company_id, key, company_id, key),
                     )
                     category_id = cur.fetchone()[0]
-                    
+
                     if parents is not None:
-                        
+
                         for parent in parents:
                             cur.execute(
                                 """
                                 SELECT "ID" FROM categories
                                 WHERE "companyID" = %s AND name = %s;
                                 """,
-                                (company_id, parent)
+                                (company_id, parent),
                             )
                             parent_id = cur.fetchone()[0]
                             cur.execute(
@@ -245,7 +249,7 @@ def write_category_level(categories: list, company_id: int) -> t.Dict[str, int]:
                                 ON CONFLICT ("subID", "parentID") 
                                 DO NOTHING;
                                 """,
-                                (category_id, parent_id)
+                                (category_id, parent_id),
                             )
         return
 
@@ -255,7 +259,6 @@ def write_category_level(categories: list, company_id: int) -> t.Dict[str, int]:
 
 # %% ../nbs/30_ETL_db_writers.ipynb 11
 def write_products(products: pd.DataFrame, company_id: int) -> None:
-    
     """
     This function writes the products to the database.
 
@@ -263,7 +266,7 @@ def write_products(products: pd.DataFrame, company_id: int) -> None:
     First column: product name (column name is irrelevant)
     Second column: category name (column name is irrelevant)
 
-    Note that each product may have more than one category. 
+    Note that each product may have more than one category.
 
     """
 
@@ -281,17 +284,17 @@ def write_products(products: pd.DataFrame, company_id: int) -> None:
                     JOIN products ON product_categories."productID" = products."ID"
                     ;
                     """,
-                    (company_id,)
+                    (company_id,),
                 )
 
                 names = cur.fetchall()
                 names = [name[0] for name in names]
-        
-                products_filtered = products[~products.iloc[:,0].isin(names)]
 
-                products_filtered_list = products_filtered.iloc[:,0].tolist()
+                products_filtered = products[~products.iloc[:, 0].isin(names)]
+
+                products_filtered_list = products_filtered.iloc[:, 0].tolist()
                 products_filtered_list = list(set(products_filtered_list))
-                
+
                 inserted_ids = []
                 for product in products_filtered_list:
                     cur.execute(
@@ -300,7 +303,7 @@ def write_products(products: pd.DataFrame, company_id: int) -> None:
                         VALUES (%s)
                         RETURNING "ID";
                         """,
-                        (product,)
+                        (product,),
                     )
                     inserted_id = cur.fetchone()[0]  # Fetch the generated ID
                     inserted_ids.append(inserted_id)
@@ -312,33 +315,42 @@ def write_products(products: pd.DataFrame, company_id: int) -> None:
                     JOIN categories ON companies."ID" = categories."companyID"
                     WHERE companies."ID" = %s;
                     """,
-                    (company_id,)
+                    (company_id,),
                 )
 
                 category_names = cur.fetchall()
 
                 category_names_df = pd.DataFrame(category_names, columns=["ID", "name"])
 
-                products_filtered = products_filtered.merge(category_names_df, left_on=products_filtered.columns[1], right_on="name", how="left")
+                products_filtered = products_filtered.merge(
+                    category_names_df,
+                    left_on=products_filtered.columns[1],
+                    right_on="name",
+                    how="left",
+                )
                 products_filtered["product_id"] = inserted_ids
 
                 products_filtered = products_filtered[["product_id", "ID"]]
-                products_filtered["product_id"] = products_filtered["product_id"].astype(int)
+                products_filtered["product_id"] = products_filtered[
+                    "product_id"
+                ].astype(int)
                 products_filtered["ID"] = products_filtered["ID"].astype(int)
 
-                values_to_insert = [tuple(row) for row in products_filtered.itertuples(index=False)]
+                values_to_insert = [
+                    tuple(row) for row in products_filtered.itertuples(index=False)
+                ]
 
                 cur.executemany(
                     """
                     INSERT INTO product_categories ("productID", "categoryID")
                     VALUES (%s, %s);
                     """,
-                    values_to_insert  # Use the converted list of tuples
+                    values_to_insert,  # Use the converted list of tuples
                 )
-                
+
     except Exception as e:
         logger.error(f"Got error while writing products to database: {e}")
-        raise e 
+        raise e
 
 # %% ../nbs/30_ETL_db_writers.ipynb 13
 def write_stores(store_regions: pd.DataFrame, company_id) -> None:
@@ -348,7 +360,6 @@ def write_stores(store_regions: pd.DataFrame, company_id) -> None:
 
     db_credentials = get_db_credentials()["con"]
 
-
     try:
         with psycopg2.connect(db_credentials) as conn:
             with conn.cursor() as cur:
@@ -356,20 +367,21 @@ def write_stores(store_regions: pd.DataFrame, company_id) -> None:
                 store_regions = add_region_ids(store_regions, cur)
 
                 cur.executemany(
-                    
                     """
                     INSERT INTO stores ("name", "regionID", "companyID")
                     VALUES (%s, %s, %s)
                     ON CONFLICT ("name", "companyID") DO NOTHING;
                     """,
-                    (store_regions[["name", "region_id"]].assign(companyID=company_id).values.tolist())
+                    (
+                        store_regions[["name", "region_id"]]
+                        .assign(companyID=company_id)
+                        .values.tolist()
+                    ),
                 )
-
 
     except Exception as e:
         logger.error(f"Got error while writing stores to database: {e}")
         raise e
-
 
 # %% ../nbs/30_ETL_db_writers.ipynb 15
 def get_region_ids(cur, country, abbreviation, type_):
@@ -394,11 +406,12 @@ def get_region_ids(cur, country, abbreviation, type_):
         FROM RegionHierarchy
         WHERE "abbreviation" = %s AND "type" = %s;
         """,
-        (country, 'country', abbreviation, type_)
+        (country, "country", abbreviation, type_),
     )
     region_id = cur.fetchone()
 
     return region_id
+
 
 def add_region_ids(data, cur):
     """
@@ -430,12 +443,13 @@ def add_region_ids(data, cur):
 
     # Convert mapping to a DataFrame
     region_id_mapping_df = pd.DataFrame(
-        region_id_mapping,
-        columns=["region", "type", "country", "region_id"]
+        region_id_mapping, columns=["region", "type", "country", "region_id"]
     )
 
     # Merge the region ID mapping back into the original data
-    data = data.merge(region_id_mapping_df, on=["region", "type", "country"], how="left")
+    data = data.merge(
+        region_id_mapping_df, on=["region", "type", "country"], how="left"
+    )
 
     # Check for any unmatched rows (this should not happen due to the error raised earlier)
     if data["region_id"].isnull().any():
@@ -467,35 +481,45 @@ def write_skus(store_item_combinations: pd.DataFrame, company_id: int) -> None:
             with conn.cursor() as cur:
                 # Fetch product IDs
                 product_mapping = get_product_ids(
-                    cur=cur, 
-                    company_id=company_id, 
-                    item_name_list=store_item_combinations["item_name"].unique().tolist()
+                    cur=cur,
+                    company_id=company_id,
+                    item_name_list=store_item_combinations["item_name"]
+                    .unique()
+                    .tolist(),
                 )
 
                 # Fetch store IDs
                 store_mapping = get_store_ids(
-                    cur=cur, 
-                    company_id=company_id, 
-                    store_name_list=store_item_combinations["store_name"].unique().tolist()
+                    cur=cur,
+                    company_id=company_id,
+                    store_name_list=store_item_combinations["store_name"]
+                    .unique()
+                    .tolist(),
                 )
 
                 # Merge product and store IDs with the input DataFrame
                 merged_data = store_item_combinations.merge(
                     product_mapping, on="item_name", how="left"
-                ).merge(
-                    store_mapping, on="store_name", how="left"
-                )
+                ).merge(store_mapping, on="store_name", how="left")
 
                 # Check for unmatched rows
                 if merged_data["productID"].isnull().any():
-                    unmatched_items = merged_data.loc[merged_data["productID"].isnull(), "item_name"].unique()
+                    unmatched_items = merged_data.loc[
+                        merged_data["productID"].isnull(), "item_name"
+                    ].unique()
                     raise ValueError(f"Unmatched item_names: {unmatched_items}")
                 if merged_data["storeID"].isnull().any():
-                    unmatched_stores = merged_data.loc[merged_data["storeID"].isnull(), "store_name"].unique()
+                    unmatched_stores = merged_data.loc[
+                        merged_data["storeID"].isnull(), "store_name"
+                    ].unique()
                     raise ValueError(f"Unmatched store_names: {unmatched_stores}")
 
                 # Prepare data for insertion
-                sku_data = merged_data[["productID", "storeID"]].drop_duplicates().values.tolist()
+                sku_data = (
+                    merged_data[["productID", "storeID"]]
+                    .drop_duplicates()
+                    .values.tolist()
+                )
 
                 # Insert data into the SKU table
                 cur.executemany(
@@ -504,7 +528,7 @@ def write_skus(store_item_combinations: pd.DataFrame, company_id: int) -> None:
                     VALUES (%s, %s)
                     ON CONFLICT ("productID", "storeID") DO NOTHING;
                     """,
-                    sku_data
+                    sku_data,
                 )
                 conn.commit()
 
@@ -533,10 +557,11 @@ def get_product_ids(cur, company_id, item_name_list):
         JOIN categories ON product_categories."categoryID" = categories."ID"
         WHERE categories."companyID" = %s AND products.name = ANY(%s);
         """,
-        (company_id, item_name_list)
+        (company_id, item_name_list),
     )
     product_mapping = cur.fetchall()
     return pd.DataFrame(product_mapping, columns=["productID", "item_name"])
+
 
 def get_store_ids(cur, company_id, store_name_list):
     """
@@ -556,12 +581,10 @@ def get_store_ids(cur, company_id, store_name_list):
         FROM stores 
         WHERE "companyID" = %s AND name = ANY(%s);
         """,
-        (company_id, list(store_name_list))
+        (company_id, list(store_name_list)),
     )
     store_id_mapping = cur.fetchall()
     return pd.DataFrame(store_id_mapping, columns=["storeID", "store_name"])
-
-
 
 # %% ../nbs/30_ETL_db_writers.ipynb 21
 def write_datapoints(sales: pd.DataFrame, company_id: int) -> None:
@@ -583,7 +606,9 @@ def write_datapoints(sales: pd.DataFrame, company_id: int) -> None:
         with psycopg2.connect(db_credentials) as conn:
             with conn.cursor() as cur:
                 # Step 1: Resolve SKU IDs
-                store_product_names = sales[["store_name", "item_name"]].drop_duplicates()
+                store_product_names = sales[
+                    ["store_name", "item_name"]
+                ].drop_duplicates()
                 sku_ids = get_sku_ids(cur, store_product_names, company_id)
 
                 # Merge SKU IDs into the sales DataFrame based on `store_name` and `item_name`
@@ -600,16 +625,26 @@ def write_datapoints(sales: pd.DataFrame, company_id: int) -> None:
 
                 # Check for unmatched rows
                 if sales["skuID"].isnull().any():
-                    unmatched_skus = sales.loc[sales["skuID"].isnull(), ["store_name", "item_name"]].drop_duplicates()
-                    raise ValueError(f"Unmatched SKUs: {unmatched_skus.to_dict(orient='records')}")
+                    unmatched_skus = sales.loc[
+                        sales["skuID"].isnull(), ["store_name", "item_name"]
+                    ].drop_duplicates()
+                    raise ValueError(
+                        f"Unmatched SKUs: {unmatched_skus.to_dict(orient='records')}"
+                    )
                 if sales["dateID"].isnull().any():
-                    unmatched_dates = sales.loc[sales["dateID"].isnull(), "date"].unique()
+                    unmatched_dates = sales.loc[
+                        sales["dateID"].isnull(), "date"
+                    ].unique()
                     raise ValueError(f"Unmatched dates: {unmatched_dates}")
 
                 # Check for duplicate rows in `skuID` and `dateID`
                 if sales[["skuID", "dateID"]].duplicated().any():
-                    duplicate_rows = sales[sales[["skuID", "dateID"]].duplicated(keep=False)]
-                    raise ValueError(f"Duplicate rows found in the data: {duplicate_rows}")
+                    duplicate_rows = sales[
+                        sales[["skuID", "dateID"]].duplicated(keep=False)
+                    ]
+                    raise ValueError(
+                        f"Duplicate rows found in the data: {duplicate_rows}"
+                    )
 
                 datapoints_data = sales[["skuID", "dateID"]]
 
@@ -622,7 +657,7 @@ def write_datapoints(sales: pd.DataFrame, company_id: int) -> None:
                     cur=cur,
                     conn=conn,
                     return_with_ids=True,
-                    unique_columns=["skuID", "dateID"]
+                    unique_columns=["skuID", "dateID"],
                 )
         return datapoint_ids
 
@@ -632,7 +667,6 @@ def write_datapoints(sales: pd.DataFrame, company_id: int) -> None:
 
 # %% ../nbs/30_ETL_db_writers.ipynb 23
 def write_sales(sales: pd.DataFrame, company_id, datapoint_ids) -> None:
-
     """
     This function writes the sales data to the database.
 
@@ -640,37 +674,37 @@ def write_sales(sales: pd.DataFrame, company_id, datapoint_ids) -> None:
 
     write_SKU_date_specific_data(
         data=sales,
-        datapoint_ids = datapoint_ids,
+        datapoint_ids=datapoint_ids,
         variable_name="sales",
         variable_type=float,
         table_name="sales",
         company_id=company_id,
     )
 
-def write_prices(prices: pd.DataFrame, company_id, datapoint_ids) -> None:
 
+def write_prices(prices: pd.DataFrame, company_id, datapoint_ids) -> None:
     """
     This function writes the prices data to the database.
     """
 
     write_SKU_date_specific_data(
         data=prices,
-        datapoint_ids = datapoint_ids,
+        datapoint_ids=datapoint_ids,
         variable_name="price",
         variable_type=float,
         table_name="prices",
         company_id=company_id,
     )
 
-def write_sold_flag(sold_flags: pd.DataFrame, company_id, datapoint_ids) -> None:
 
+def write_sold_flag(sold_flags: pd.DataFrame, company_id, datapoint_ids) -> None:
     """
     This function writes the sold flag data to the database.
     """
 
     write_SKU_date_specific_data(
         data=sold_flags,
-        datapoint_ids = datapoint_ids,
+        datapoint_ids=datapoint_ids,
         variable_name="name",
         variable_type=str,
         table_name="flags",
@@ -686,7 +720,7 @@ def write_SKU_date_specific_data(
     variable_type: callable,
     table_name: str,
     company_id: int,
-    name_in_df=None
+    name_in_df=None,
 ) -> None:
     """
     Writes SKU and date-specific data to the database using the new `datapointID` schema.
@@ -706,51 +740,75 @@ def write_SKU_date_specific_data(
             with conn.cursor() as cur:
                 # Fetch `skuID` mappings
                 logger.info("-- in write SKU date specific data -- getting sku IDs")
-                store_product_names = data[["store_name", "item_name"]].drop_duplicates()
+                store_product_names = data[
+                    ["store_name", "item_name"]
+                ].drop_duplicates()
                 sku_mapping = get_sku_ids(cur, store_product_names, company_id)
 
                 # Fetch `dateID` mappings
                 logger.info("-- in write SKU date specific data -- getting date IDs")
                 unique_dates = data["date"].drop_duplicates()
                 date_mapping = get_date_ids(cur, unique_dates)
-                date_mapping["date"] = pd.to_datetime(date_mapping["date"], errors="coerce")
-                
+                date_mapping["date"] = pd.to_datetime(
+                    date_mapping["date"], errors="coerce"
+                )
+
                 # Merge `skuID` and `dateID` into the input data
-                logger.info("-- in write SKU date specific data -- merging sku IDs and date IDs")
-                data = data.merge(sku_mapping, on=["store_name", "item_name"], how="left")
+                logger.info(
+                    "-- in write SKU date specific data -- merging sku IDs and date IDs"
+                )
+                data = data.merge(
+                    sku_mapping, on=["store_name", "item_name"], how="left"
+                )
                 data["date"] = pd.to_datetime(data["date"], errors="coerce")
                 data = data.merge(date_mapping, on="date", how="left")
                 data.drop(columns=["store_name", "item_name", "date"], inplace=True)
 
                 # show ram usage of data
-                logger.info(f"-- in write SKU date specific data -- Memory usage of data: {data.memory_usage().sum() / 1024 / 1024 ** 2:.2f} GB")
+                logger.info(
+                    f"-- in write SKU date specific data -- Memory usage of data: {data.memory_usage().sum() / 1024 / 1024 ** 2:.2f} GB"
+                )
 
                 # Check for unmatched mappings
                 if data["skuID"].isnull().any():
-                    unmatched_skus = data.loc[data["skuID"].isnull(), ["store_name", "item_name"]].drop_duplicates()
-                    raise ValueError(f"Unmatched SKUs: {unmatched_skus.to_dict(orient='records')}")
+                    unmatched_skus = data.loc[
+                        data["skuID"].isnull(), ["store_name", "item_name"]
+                    ].drop_duplicates()
+                    raise ValueError(
+                        f"Unmatched SKUs: {unmatched_skus.to_dict(orient='records')}"
+                    )
                 if data["dateID"].isnull().any():
                     unmatched_dates = data.loc[data["dateID"].isnull(), "date"].unique()
                     raise ValueError(f"Unmatched dates: {unmatched_dates}")
 
-                logger.info("-- in write SKU date specific data -- getting checking for duplicates")
+                logger.info(
+                    "-- in write SKU date specific data -- getting checking for duplicates"
+                )
                 # Fetch `datapointID` for `skuID` and `dateID` combinations
                 datapoint_combinations = data[["skuID", "dateID"]]
 
                 # Check for duplicate combinations of `skuID` and `dateID`
                 if datapoint_combinations.duplicated().any():
-                    duplicate_rows = datapoint_combinations[datapoint_combinations.duplicated(keep=False)]
-                    raise ValueError(f"Duplicate rows found in the data: {duplicate_rows}")
+                    duplicate_rows = datapoint_combinations[
+                        datapoint_combinations.duplicated(keep=False)
+                    ]
+                    raise ValueError(
+                        f"Duplicate rows found in the data: {duplicate_rows}"
+                    )
                 data.drop(columns=["storeID", "productID"], inplace=True)
 
                 # Merge `datapointID` into the input data
                 # rename column ID to datapointID in the datapoint_IDs
-                logger.info("-- in write SKU date specific data -- merging datapoint IDs")
+                logger.info(
+                    "-- in write SKU date specific data -- merging datapoint IDs"
+                )
                 datapoint_ids = datapoint_ids.rename(columns={"ID": "datapointID"})
                 data = data.merge(datapoint_ids, on=["skuID", "dateID"], how="left")
 
                 # Check for unmatched `datapointID`
-                logger.info("-- in write SKU date specific data -- checking for unmatched datapoints")
+                logger.info(
+                    "-- in write SKU date specific data -- checking for unmatched datapoints"
+                )
                 # if data["datapointID"].isnull().any():
                 #     # unmatched_datapoints = data.loc[data["datapointID"].isnull(), ["skuID", "dateID"]].drop_duplicates()
                 #     # raise ValueError(f"Unmatched datapoints: {unmatched_datapoints.to_dict(orient='records')}")
@@ -758,11 +816,15 @@ def write_SKU_date_specific_data(
                 data.drop(columns=["skuID", "dateID"], inplace=True)
 
                 # Prepare data for insertion
-                logger.info("-- in write SKU date specific data -- preparing data for insertion")
+                logger.info(
+                    "-- in write SKU date specific data -- preparing data for insertion"
+                )
                 if name_in_df is None:
                     name_in_df = variable_name
                 data_to_write = data[["datapointID", name_in_df]].copy()
-                data_to_write[name_in_df] = data_to_write[name_in_df].astype(variable_type)
+                data_to_write[name_in_df] = data_to_write[name_in_df].astype(
+                    variable_type
+                )
 
                 # Insert data into the specified table
                 logger.info("-- in write SKU date specific data -- inserting data")
@@ -772,16 +834,17 @@ def write_SKU_date_specific_data(
                     column_names=["datapointID", variable_name],
                     types=[int, variable_type],
                     cur=cur,
-                    conn=conn
+                    conn=conn,
                 )
 
     except Exception as e:
         logger.error(f"Error while writing {variable_name} data to the database: {e}")
         raise e
 
-
 # %% ../nbs/30_ETL_db_writers.ipynb 26
-def get_sku_ids(cur, store_product_names: pd.DataFrame, company_id: int) -> pd.DataFrame:
+def get_sku_ids(
+    cur, store_product_names: pd.DataFrame, company_id: int
+) -> pd.DataFrame:
     """
     Fetch skuIDs for given combinations of `store_name` and `item_name`.
 
@@ -797,26 +860,32 @@ def get_sku_ids(cur, store_product_names: pd.DataFrame, company_id: int) -> pd.D
     store_ids = get_store_ids(
         cur=cur,
         company_id=company_id,
-        store_name_list=store_product_names["store_name"].unique().tolist()
+        store_name_list=store_product_names["store_name"].unique().tolist(),
     )
 
     # Step 2: Resolve product IDs
     product_ids = get_product_ids(
         cur=cur,
         company_id=company_id,
-        item_name_list=store_product_names["item_name"].unique().tolist()
+        item_name_list=store_product_names["item_name"].unique().tolist(),
     )
 
     # Step 3: Merge store and product IDs with input DataFrame
-    store_product_ids = store_product_names.merge(store_ids, on="store_name", how="left")
+    store_product_ids = store_product_names.merge(
+        store_ids, on="store_name", how="left"
+    )
     store_product_ids = store_product_ids.merge(product_ids, on="item_name", how="left")
 
     # Check for unmatched rows
     if store_product_ids["storeID"].isnull().any():
-        unmatched_stores = store_product_ids.loc[store_product_ids["storeID"].isnull(), "store_name"].unique()
+        unmatched_stores = store_product_ids.loc[
+            store_product_ids["storeID"].isnull(), "store_name"
+        ].unique()
         raise ValueError(f"Unmatched store names: {unmatched_stores}")
     if store_product_ids["productID"].isnull().any():
-        unmatched_products = store_product_ids.loc[store_product_ids["productID"].isnull(), "item_name"].unique()
+        unmatched_products = store_product_ids.loc[
+            store_product_ids["productID"].isnull(), "item_name"
+        ].unique()
         raise ValueError(f"Unmatched product names: {unmatched_products}")
 
     # Step 4: Use a temporary table for efficient querying
@@ -824,12 +893,14 @@ def get_sku_ids(cur, store_product_names: pd.DataFrame, company_id: int) -> pd.D
     temp_data = store_product_ids[["storeID", "productID"]]
 
     # Create temporary table
-    cur.execute(f"""
+    cur.execute(
+        f"""
         CREATE TEMP TABLE {temp_table_name} (
             storeID INT,
             productID INT
         ) ON COMMIT DROP;
-    """)
+    """
+    )
 
     # Insert data into the temporary table
     psycopg2.extras.execute_batch(
@@ -838,25 +909,29 @@ def get_sku_ids(cur, store_product_names: pd.DataFrame, company_id: int) -> pd.D
         INSERT INTO {temp_table_name} (storeID, productID)
         VALUES (%s, %s);
         """,
-        temp_data.values.tolist()
+        temp_data.values.tolist(),
     )
 
     # Query sku_table using a JOIN
-    cur.execute(f"""
+    cur.execute(
+        f"""
         SELECT sku_table."ID" AS skuID, sku_table."storeID", sku_table."productID"
         FROM sku_table
         INNER JOIN {temp_table_name}
         ON sku_table."storeID" = {temp_table_name}.storeID
         AND sku_table."productID" = {temp_table_name}.productID;
-    """)
+    """
+    )
 
     # Fetch and return results
     result = cur.fetchall()
     sku_df = pd.DataFrame(result, columns=["skuID", "storeID", "productID"])
 
     # Merge the original store_name and item_name back into the results
-    final_result = sku_df.merge(store_product_ids, on=["storeID", "productID"], how="left")
-    
+    final_result = sku_df.merge(
+        store_product_ids, on=["storeID", "productID"], how="left"
+    )
+
     return final_result[["skuID", "storeID", "productID", "store_name", "item_name"]]
 
 
@@ -876,16 +951,20 @@ def get_datapoint_ids(cur, datapoint_combinations: pd.DataFrame) -> pd.DataFrame
         raise ValueError("Input DataFrame must contain 'skuID' and 'dateID' columns.")
 
     # Convert combinations to a list of tuples for use in the query
-    combinations_list = datapoint_combinations[["skuID", "dateID"]].drop_duplicates().values.tolist()
+    combinations_list = (
+        datapoint_combinations[["skuID", "dateID"]].drop_duplicates().values.tolist()
+    )
 
     try:
         # Create a temporary table to store the combinations
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TEMP TABLE temp_datapoints (
                 "skuID" INTEGER,
                 "dateID" INTEGER
             ) ON COMMIT DROP;
-        """)
+        """
+        )
 
         logger.info("Adding into table for temp_datapoints")
         # Insert the combinations into the temporary table
@@ -895,16 +974,18 @@ def get_datapoint_ids(cur, datapoint_combinations: pd.DataFrame) -> pd.DataFrame
             INSERT INTO temp_datapoints ("skuID", "dateID")
             VALUES %s;
             """,
-            combinations_list
+            combinations_list,
         )
 
         # Query for datapointIDs
-        cur.execute("""
+        cur.execute(
+            """
             SELECT d."ID", d."skuID", d."dateID"
             FROM datapoints d
             INNER JOIN temp_datapoints t
             ON d."skuID" = t."skuID" AND d."dateID" = t."dateID";
-        """)
+        """
+        )
 
         # Fetch results and return as a DataFrame
         result = cur.fetchall()
@@ -932,7 +1013,7 @@ def get_date_ids(cur, dates_list):
         FROM dates 
         WHERE date = ANY(%s::date[]);
         """,
-        (list(dates_list),)
+        (list(dates_list),),
     )
     date_id_mapping = cur.fetchall()
     return pd.DataFrame(date_id_mapping, columns=["dateID", "date"])
@@ -940,24 +1021,21 @@ def get_date_ids(cur, dates_list):
 # %% ../nbs/30_ETL_db_writers.ipynb 28
 def write_time_region_features(
     time_region_features: pd.DataFrame,
-    name_description: [str, str], # containing name and description of the feature
-    company_id: int
-
+    name_description: [str, str],  # containing name and description of the feature
+    company_id: int,
 ):
     """
 
-    This function writes data into the database whose values are specific to a 
+    This function writes data into the database whose values are specific to a
     time-stamps and regions
-    
-    """
 
+    """
 
     db_credentials = get_db_credentials()["con"]
 
     try:
         with psycopg2.connect(db_credentials) as conn:
             with conn.cursor() as cur:
-
 
                 # add name and description to the time_region_features_description table
                 cur.execute(
@@ -972,7 +1050,7 @@ def write_time_region_features(
                     UNION ALL
                     SELECT "ID" FROM time_region_features_description WHERE "name" = %s;
                     """,
-                    (name_description[0], name_description[1], name_description[0])
+                    (name_description[0], name_description[1], name_description[0]),
                 )
 
                 feature_id = cur.fetchone()[0]
@@ -986,27 +1064,33 @@ def write_time_region_features(
                     VALUES (%s, %s)
                     ON CONFLICT DO NOTHING;
                     """,
-                    (company_id, feature_id)
+                    (company_id, feature_id),
                 )
-                
+
                 # add features to the time_region_features table
                 time_region_features = add_region_ids(time_region_features, cur)
 
                 # add date features
-                time_region_features["date"] = pd.to_datetime(time_region_features["date"], errors="coerce")
+                time_region_features["date"] = pd.to_datetime(
+                    time_region_features["date"], errors="coerce"
+                )
                 date_ids = get_date_ids(cur, time_region_features["date"].unique())
                 date_ids["date"] = pd.to_datetime(date_ids["date"], errors="coerce")
-                time_region_features = time_region_features.merge(date_ids, on="date", how="left")
+                time_region_features = time_region_features.merge(
+                    date_ids, on="date", how="left"
+                )
 
                 cur.executemany(
-
                     """
                     INSERT INTO time_region_features ("dateID", "regionID", "trfID", "value")
                     VALUES (%s, %s, %s, %s)
                     ON CONFLICT ("dateID", "regionID", "trfID") DO NOTHING;
                     """,
-
-                    (time_region_features[["dateID", "region_id", "trfID", "feature_value"]].values.tolist())
+                    (
+                        time_region_features[
+                            ["dateID", "region_id", "trfID", "feature_value"]
+                        ].values.tolist()
+                    ),
                 )
 
                 conn.commit()
