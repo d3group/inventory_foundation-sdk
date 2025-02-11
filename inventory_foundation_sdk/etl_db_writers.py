@@ -6,8 +6,7 @@
 __all__ = ['logger', 'write_company_name', 'write_categories', 'write_category_level_descriptions', 'write_category_level',
            'write_products', 'write_stores', 'get_region_ids', 'add_region_ids', 'write_skus', 'get_product_ids',
            'get_store_ids', 'write_datapoints', 'write_sales', 'write_prices', 'write_sold_flag',
-           'write_SKU_date_specific_data', 'get_sku_ids', 'get_datapoint_ids', 'get_date_ids',
-           'write_time_region_features']
+           'write_SKU_date_specific_data', 'get_sku_ids', 'get_date_ids', 'write_time_region_features']
 
 # %% ../nbs/30_ETL_db_writers.ipynb 3
 import pandas as pd
@@ -935,6 +934,7 @@ def get_sku_ids(
     return final_result[["skuID", "storeID", "productID", "store_name", "item_name"]]
 
 
+'''
 def get_datapoint_ids(cur, datapoint_combinations: pd.DataFrame) -> pd.DataFrame:
     """
     Fetch `datapointID` for given combinations of `skuID` and `dateID`.
@@ -951,20 +951,16 @@ def get_datapoint_ids(cur, datapoint_combinations: pd.DataFrame) -> pd.DataFrame
         raise ValueError("Input DataFrame must contain 'skuID' and 'dateID' columns.")
 
     # Convert combinations to a list of tuples for use in the query
-    combinations_list = (
-        datapoint_combinations[["skuID", "dateID"]].drop_duplicates().values.tolist()
-    )
+    combinations_list = datapoint_combinations[["skuID", "dateID"]].drop_duplicates().values.tolist()
 
     try:
         # Create a temporary table to store the combinations
-        cur.execute(
-            """
+        cur.execute("""
             CREATE TEMP TABLE temp_datapoints (
                 "skuID" INTEGER,
                 "dateID" INTEGER
             ) ON COMMIT DROP;
-        """
-        )
+        """)
 
         logger.info("Adding into table for temp_datapoints")
         # Insert the combinations into the temporary table
@@ -974,18 +970,16 @@ def get_datapoint_ids(cur, datapoint_combinations: pd.DataFrame) -> pd.DataFrame
             INSERT INTO temp_datapoints ("skuID", "dateID")
             VALUES %s;
             """,
-            combinations_list,
+            combinations_list
         )
 
         # Query for datapointIDs
-        cur.execute(
-            """
+        cur.execute("""
             SELECT d."ID", d."skuID", d."dateID"
             FROM datapoints d
             INNER JOIN temp_datapoints t
             ON d."skuID" = t."skuID" AND d."dateID" = t."dateID";
-        """
-        )
+        """)
 
         # Fetch results and return as a DataFrame
         result = cur.fetchall()
@@ -994,6 +988,8 @@ def get_datapoint_ids(cur, datapoint_combinations: pd.DataFrame) -> pd.DataFrame
     except Exception as e:
         logger.error(f"Error while fetching datapoint IDs: {e}")
         raise e
+
+'''
 
 
 def get_date_ids(cur, dates_list):
