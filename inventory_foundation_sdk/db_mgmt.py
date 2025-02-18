@@ -512,6 +512,7 @@ class SQLDatabase:
                     queries = [queries] * len(params)
 
                 # Iterate over queries and fetch rows
+
                 for idx, query in enumerate(queries):
                     query_params = params[idx] if params else None
                     cur.execute(query, query_params)

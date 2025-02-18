@@ -112,12 +112,17 @@ def get_norm_param(
         ValueError: If the normalization type is not recognized.
         psycopg2.DatabaseError: If there is a database error during execution.
     """
+
     try:
         # Determine the columns to fetch based on normalization type
         if normalization_type == "standardize":
             value_columns = ["mean", "std"]
         elif normalization_type == "scale":
             value_columns = ["min", "max"]
+        elif normalization_type == ["standardize", "scale"]:
+            value_columns = ["mean", "std", "min", "max"]
+        elif normalization_type == ["scale", "standardize"]:
+            value_columns = ["min", "max", "mean", "std"]
         else:
             raise ValueError("Normalization type not recognized")
 
