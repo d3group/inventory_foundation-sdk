@@ -1,0 +1,122 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "inventory_foundation-sdk",
+    "section": "",
+    "text": "This file will become your README and also the index of your documentation.",
+    "crumbs": [
+      "inventory_foundation-sdk"
+    ]
+  },
+  {
+    "objectID": "index.html#developer-guide",
+    "href": "index.html#developer-guide",
+    "title": "inventory_foundation-sdk",
+    "section": "Developer Guide",
+    "text": "Developer Guide\nIf you are new to using nbdev here are some useful pointers to get you started.\n\nInstall inventory_foundation_sdk in Development mode\n# make sure inventory_foundation_sdk package is installed in development mode\n$ pip install -e .\n\n# make changes under nbs/ directory\n# ...\n\n# compile to have changes apply to inventory_foundation_sdk\n$ nbdev_prepare",
+    "crumbs": [
+      "inventory_foundation-sdk"
+    ]
+  },
+  {
+    "objectID": "index.html#usage",
+    "href": "index.html#usage",
+    "title": "inventory_foundation-sdk",
+    "section": "Usage",
+    "text": "Usage\n\nInstallation\nInstall latest from the GitHub repository:\n$ pip install git+https://github.com/d3group/inventory_foundation-sdk.git\nor from conda\n$ conda install -c d3group inventory_foundation_sdk\nor from pypi\n$ pip install inventory_foundation_sdk\n\n\nDocumentation\nDocumentation can be found hosted on this GitHub repository’s pages. Additionally you can find package manager specific guidelines on conda and pypi respectively.",
+    "crumbs": [
+      "inventory_foundation-sdk"
+    ]
+  },
+  {
+    "objectID": "index.html#how-to-use",
+    "href": "index.html#how-to-use",
+    "title": "inventory_foundation-sdk",
+    "section": "How to use",
+    "text": "How to use\nFill me in please! Don’t forget code examples:\n\n1+1\n\n2",
+    "crumbs": [
+      "inventory_foundation-sdk"
+    ]
+  },
+  {
+    "objectID": "etl_db_writers.html",
+    "href": "etl_db_writers.html",
+    "title": "ETL DB writers",
+    "section": "",
+    "text": "Company-level\n\nsource\n\n\nwrite_company_name\n\n write_company_name (name:str, additional_info:Dict=None,\n                     ignore_company_if_exist:bool=True)\n\n*This function writes the company name to the database and any additional info. Each key in additional_info becomes a column in the database table if it doesn’t exist, and the associated value is written to that column.\nIf ignore_company_if_exist is False and the company name already exists, an error is raised. If ignore_company_if_exist is True, a warning is logged and the existing record is updated if additional info differs.\nReturns the ID that the database has assigned to the company name.*\n\n\nCategory level\n\nMain function to write categories\n\nsource\n\n\n\nwrite_categories\n\n write_categories (categories:dict, company_id:int,\n                   category_level_names:list=None)\n\n*This function writes the categories to the database.\nThe categories are expected to be in a dictionary with the following structure: {1: { “category_name”: None } 2: { “category_name”: [“parent_category_1”, “parent_category_2”, …] } … }\nFor the first level, the parent list should be None.\nIf a category on a lower level has another parent from 2 or more levels above, the cateogry should be listed under the lowest level parent. (such that the write db function can first write all parents and then the children)*\n\nHelper functions for categories\n\nsource\n\n\n\nwrite_category_level\n\n write_category_level (categories:list, company_id:int)\n\n*This function writes one level of categories into the database and returns a list of the IDs that the database has assigned. The purpose is to call this function repeatedly for each level of categories.\nIt will add data to two tables: - categories with the category names and a flag if it is a leaf category - category_relations with the parent-child relationships between categories*\n\nsource\n\n\nwrite_category_level_descriptions\n\n write_category_level_descriptions (category_level_names, company_id)\n\nThis function writes the names of the category levels to the database.\n\n\nProduct data\n\nsource\n\n\nwrite_products\n\n write_products (products:pandas.core.frame.DataFrame, company_id:int)\n\n*This function writes the products to the database.\nThe input must be a dataframe with the following structure: First column: product name (column name is irrelevant) Second column: category name (column name is irrelevant)\nNote that each product may have more than one category.*\n\n\nStore level\n\nMain function to write stores\n\nsource\n\n\n\nwrite_stores\n\n write_stores (store_regions:pandas.core.frame.DataFrame, company_id)\n\nThis function writes the store data to the database.\n\nHelper functions for write_stores\n\nsource\n\n\n\nadd_region_ids\n\n add_region_ids (data, cur)\n\n*Adds region IDs to the given DataFrame by mapping region, type, and country.\nArgs: data (pd.DataFrame): Input DataFrame containing region, type, and country columns. cur (psycopg2.cursor): Database cursor for querying region IDs.\nReturns: pd.DataFrame: DataFrame with an additional region_id column.*\n\nsource\n\n\nget_region_ids\n\n get_region_ids (cur, country, abbreviation, type_)\n\n\n\nSKU writing\n\nMain function\n\nsource\n\n\n\nwrite_skus\n\n write_skus (store_item_combinations:pandas.core.frame.DataFrame,\n             company_id:int)\n\n*Writes SKU data to the database.\nFor each store-item combination: - Fetches the product ID by matching item_name in the products table, filtering by company. - Fetches the store ID by matching store_name in the stores table, filtering by company. - Inserts the resulting combinations into the sku_table.\nArgs: store_item_combinations (pd.DataFrame): DataFrame with columns store_name and item_name. company_id (int): ID of the company for filtering relevant data.\nRaises: Exception: If any errors occur during the database operation.*\n\nHelper functions for SKU writing\n\nsource\n\n\n\nget_store_ids\n\n get_store_ids (cur, company_id, store_name_list)\n\n*Fetch store IDs for a given company and a list of store names.\nArgs: cur (psycopg2.cursor): Database cursor for executing SQL commands. company_id (int): ID of the company. store_name_list (list): List of store names.\nReturns: pd.DataFrame: A DataFrame mapping store IDs to store names.*\n\nsource\n\n\nget_product_ids\n\n get_product_ids (cur, company_id, item_name_list)\n\n*Fetch product IDs for a given company and a list of item names.\nArgs: cur (psycopg2.cursor): Database cursor for executing SQL commands. company_id (int): ID of the company. item_name_list (list): List of item names.\nReturns: pd.DataFrame: A DataFrame mapping product IDs to item names.*\n\n\nDatapoint-level data\n\nDatapoint IDs\n\nsource\n\n\n\nwrite_datapoints\n\n write_datapoints (sales:pandas.core.frame.DataFrame, company_id:int)\n\n*Writes datapoints to the datapoints table in the database.\nThe datapoints consist of skuID and dateID, resolved based on store_name, item_name, and date.\nArgs: sales (pd.DataFrame): DataFrame containing store_name, item_name, date, and additional data. company_id (int): ID of the company for filtering relevant data.\nRaises: ValueError: If any store_name, item_name, or date cannot be matched or if duplicate rows are found.*\n\nTime-sku specific data\n\nsource\n\n\n\nwrite_sold_flag\n\n write_sold_flag (sold_flags:pandas.core.frame.DataFrame, company_id,\n                  datapoint_ids)\n\nThis function writes the sold flag data to the database.\n\nsource\n\n\nwrite_prices\n\n write_prices (prices:pandas.core.frame.DataFrame, company_id,\n               datapoint_ids)\n\nThis function writes the prices data to the database.\n\nsource\n\n\nwrite_sales\n\n write_sales (sales:pandas.core.frame.DataFrame, company_id,\n              datapoint_ids)\n\nThis function writes the sales data to the database.\n\nsource\n\n\nwrite_SKU_date_specific_data\n\n write_SKU_date_specific_data (data:pandas.core.frame.DataFrame,\n                               datapoint_ids, variable_name:str,\n                               variable_type:&lt;built-infunctioncallable&gt;,\n                               table_name:str, company_id:int,\n                               name_in_df=None)\n\n*Writes SKU and date-specific data to the database using the new datapointID schema.\nArgs: data (pd.DataFrame): Input data containing item_name, store_name, date, and the variable to insert. variable_name (str): The name of the variable/column to be inserted into the database. variable_type (callable): The type to cast the variable’s values (e.g., int, float, str). table_name (str): The name of the database table to insert into. company_id (int): The company ID for filtering relevant records. name_in_df (str, optional): Column name in the DataFrame for the variable. Defaults to variable_name.*\n\nHelper functions for time-sku specific data\n\nsource\n\n\n\nget_date_ids\n\n get_date_ids (cur, dates_list)\n\n*Fetch date IDs for a given list of dates.\nArgs: cur (psycopg2.cursor): Database cursor for executing SQL commands. dates_list (list): List of dates.\nReturns: pd.DataFrame: A DataFrame mapping date IDs to dates.*\n\nsource\n\n\nget_datapoint_ids\n\n get_datapoint_ids (cur,\n                    datapoint_combinations:pandas.core.frame.DataFrame)\n\n*Fetch datapointID for given combinations of skuID and dateID.\nArgs: cur (psycopg2.cursor): Database cursor for executing SQL commands. datapoint_combinations (pd.DataFrame): DataFrame with two columns: skuID and dateID.\nReturns: pd.DataFrame: DataFrame mapping datapointID, skuID, and dateID.*\n\nsource\n\n\nget_sku_ids\n\n get_sku_ids (cur, store_product_names:pandas.core.frame.DataFrame,\n              company_id:int)\n\n*Fetch skuIDs for given combinations of store_name and item_name.\nArgs: cur (psycopg2.cursor): Database cursor for executing SQL commands. store_product_names (pd.DataFrame): DataFrame with two columns: store_name and item_name. company_id (int): ID of the company for filtering relevant data.\nReturns: pd.DataFrame: DataFrame mapping skuID, storeID, productID, store_name, and item_name.*\n\n\nTime-region specific data\n\nsource\n\n\nwrite_time_region_features\n\n write_time_region_features\n                             (time_region_features:pandas.core.frame.DataF\n                             rame,\n                             name_description:[&lt;class'str'&gt;,&lt;class'str'&gt;],\n                             company_id:int)\n\nThis function writes data into the database whose values are specific to a time-stamps and regions\n\n\n\n\n\n\n\n\n\nType\nDetails\n\n\n\n\ntime_region_features\nDataFrame\n\n\n\nname_description\n[&lt;class ‘str’&gt;, &lt;class ‘str’&gt;]\ncontaining name and description of the feature\n\n\ncompany_id\nint",
+    "crumbs": [
+      "ETL DB writers"
+    ]
+  },
+  {
+    "objectID": "db_mgmt.html",
+    "href": "db_mgmt.html",
+    "title": "Database management",
+    "section": "",
+    "text": "source",
+    "crumbs": [
+      "Database management"
+    ]
+  },
+  {
+    "objectID": "db_mgmt.html#attributes",
+    "href": "db_mgmt.html#attributes",
+    "title": "Database management",
+    "section": "Attributes:",
+    "text": "Attributes:\ncredentials : dict A dictionary containing the database connection credentials. connection : psycopg2.connection The database connection object.",
+    "crumbs": [
+      "Database management"
+    ]
+  },
+  {
+    "objectID": "db_mgmt.html#methods",
+    "href": "db_mgmt.html#methods",
+    "title": "Database management",
+    "section": "Methods:",
+    "text": "Methods:\nconnect(): Connects to the database using the provided credentials.\nclose(): Closes the database connection.\nexecute_query(query: str): Executes the given SQL query.\nexecute_multiple_queries(queries: list, params: list = None, fetchrows: bool = False): Executes a list or iterable of SQL queries. If fetchrows is True, iterates over queries and fetches rows. If fetchrows is False, uses executemany for batch execution.*",
+    "crumbs": [
+      "Database management"
+    ]
+  },
+  {
+    "objectID": "etl_nodes.html",
+    "href": "etl_nodes.html",
+    "title": "ETL_nodes",
+    "section": "",
+    "text": "General function for simple input/output\n\nsource\n\n\ninput_output_node\n\n input_output_node (*inputs)\n\n*This is a node for cases where the raw data can be directly passed through without processing steps.\nAccepts multiple inputs and returns them unpacked. If there’s only one input, it returns the input itself.*\n\n\nHelper nodes for data transformation\n\nsource\n\n\nconvert_hirarchic_to_dict\n\n convert_hirarchic_to_dict (categories:pandas.core.frame.DataFrame,\n                            single_leaf_level=True)\n\n*This function converts a strictly hirarchic dataframe into a dictioary. Strictly hirarchic means that each column represents a hirarchy level, and each subcategory belongs to exactly one higher level category. In the dataframe, each subcategory belongs to exactly one higher level category.\nThe dictionary is the general form that is used by the write_db_node as input.\nRequirements: - IMPORTANT: This function is only for strictly hierarchical categories, i.e., each subcategory belongs to exactly one higher level category. - The categories must be in descending order (i.e., the first columns the highest level category, second column is the second highest level category, etc.) - The column names can carry a name, if required (e.g., “category”, “department”, etc.). - The categories itself will be saved under generic levles (“1”, “2”, etc.), but the specific names will be returned in separate list for saving\nInputs: - categories: A pandas dataframe with the categories. The columns must be in descending order (i.e., the first columns the highest level category, second column is the second highest level category, etc.) - single_leaf_level: A boolean that indicates if the categories dataframe has only one leaf level. If True, the function will return a dictionary with the leaf level as the last level. If False, leafs may be at different levels.\nOutputs: - mappings: A dictionary with the levels as keys and a dictionary as values. The dictionary has the category names as keys and list of parents. This means that the dictionary is more general than the dataframe and is the required input for the write_db_node. - category_level_names: A list of the column names of the categories dataframe.*",
+    "crumbs": [
+      "ETL_nodes"
+    ]
+  },
+  {
+    "objectID": "state_mgmt.html",
+    "href": "state_mgmt.html",
+    "title": "States",
+    "section": "",
+    "text": "source\n\nFlag\n\n Flag (name, state=None)\n\n*A class to represent a flag with a state that can be checked, set, or retrieved.\nAttributes: name (str): The name of the flag. _state (bool or None): The state of the flag. Defaults to None.\nMethods: check(): Verifies the state of the flag. Raises an error if not set or if False. set(state): Sets the state of the flag. get(): Returns the current state of the flag.*\n\nsource\n\n\nStates\n\n States ()\n\nA class to manage the states of nodes within the ETL pipeline. The are verified function checks if all the states have been verified and the corresponding nodes has run successfully.",
+    "crumbs": [
+      "States"
+    ]
+  },
+  {
+    "objectID": "custom_datasets.html",
+    "href": "custom_datasets.html",
+    "title": "Custom datasets",
+    "section": "",
+    "text": "General function for simple input/output\n\nsource\n\n\nAddRowDataset\n\n AddRowDataset (table:str, column_names:List, credentials:str,\n                unique_columns:List, load_args=None, save_args=None)\n\nAdds or update one row to a SQL table, if it does not exist.\n\nsource\n\n\nDynamicPathJSONDataset\n\n DynamicPathJSONDataset (path_param:str)\n\nCustom dataset to dynamically resolve a JSON file path from parameters.",
+    "crumbs": [
+      "Custom datasets"
+    ]
+  },
+  {
+    "objectID": "db_retrievers.html",
+    "href": "db_retrievers.html",
+    "title": "Database retrievers",
+    "section": "",
+    "text": "source\n\nget_company_id\n\n get_company_id (company_name:str, credentials_con:str)\n\n*Function to get the company_id from the company_name\nArgs: company_name (str): The company name credentials_con (str): The credentials connection string*\n\nsource\n\n\nget_date_id\n\n get_date_id (date:str, credentials_con:str)\n\n*Function to get the date_id from a date\nArgs: date (str): A date credentials_con (str): The credentials connection string*\n\nsource\n\n\nget_norm_param\n\n get_norm_param (table_name:str, key_columns:list, key_values:list,\n                 normalization_type:str, credentials:str,\n                 additional_columns:list=None)\n\n*Retrieves normalization parameters from a database table.\nArgs: table_name (str): The name of the table containing normalization parameters. key_columns (list): List of column names used as keys for filtering the data. key_values (list): List of values corresponding to the key columns. normalization_type (str): Type of normalization (‘standardize’ or ‘scale’). credentials (str): Database connection string. additional_columns (list, optional): Additional columns to include in the result.\nReturns: dict: A dictionary containing the normalization parameters (and additional columns if specified).\nRaises: ValueError: If the normalization type is not recognized. psycopg2.DatabaseError: If there is a database error during execution.*\n\nsource\n\n\nget_norm_param_by_company\n\n get_norm_param_by_company (table_name:str, key_columns:list,\n                            key_values:list, normalization_type:str,\n                            credentials:str, company_filter:List[int],\n                            additional_columns:list=None)\n\n*Retrieves normalization parameters filtered by company IDs from a database table.\nArgs: table_name (str): The name of the table containing normalization parameters. key_columns (list): List of column names used as keys for filtering the data. key_values (list): List of values corresponding to the key columns. normalization_type (str): Type of normalization (‘standardize’ or ‘scale’). credentials (str): Database connection string. company_filter (list[int]): List of company IDs to filter the SKUs. additional_columns (list, optional): Additional columns to include in the result.\nReturns: dict: A dictionary containing the normalization parameters (and additional columns if specified).\nRaises: ValueError: If the normalization type is not recognized or required columns are missing. psycopg2.DatabaseError: If there is a database error during execution.*",
+    "crumbs": [
+      "Database retrievers"
+    ]
+  }
+]

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://d3group.github.io/inventory_foundation-sdk/index.html</loc>
+    <lastmod>2025-02-18T20:54:30.808Z</lastmod>
+  </url>
+  <url>
+    <loc>https://d3group.github.io/inventory_foundation-sdk/etl_db_writers.html</loc>
+    <lastmod>2025-02-18T20:54:30.941Z</lastmod>
+  </url>
+  <url>
+    <loc>https://d3group.github.io/inventory_foundation-sdk/db_mgmt.html</loc>
+    <lastmod>2025-02-18T20:54:30.816Z</lastmod>
+  </url>
+  <url>
+    <loc>https://d3group.github.io/inventory_foundation-sdk/etl_nodes.html</loc>
+    <lastmod>2025-02-18T20:54:30.461Z</lastmod>
+  </url>
+  <url>
+    <loc>https://d3group.github.io/inventory_foundation-sdk/state_mgmt.html</loc>
+    <lastmod>2025-02-18T20:54:29.899Z</lastmod>
+  </url>
+  <url>
+    <loc>https://d3group.github.io/inventory_foundation-sdk/custom_datasets.html</loc>
+    <lastmod>2025-02-18T20:54:30.715Z</lastmod>
+  </url>
+  <url>
+    <loc>https://d3group.github.io/inventory_foundation-sdk/db_retrievers.html</loc>
+    <lastmod>2025-02-18T20:54:30.860Z</lastmod>
+  </url>
+</urlset>
